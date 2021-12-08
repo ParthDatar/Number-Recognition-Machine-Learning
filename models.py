@@ -67,6 +67,16 @@ class RegressionModel(object):
     def __init__(self):
         # Initialize your model parameters here
         "*** YOUR CODE HERE ***"
+        self.rate = 0.01
+        self.num_layers = 2
+        self.layer_size = 50
+
+        self.ms = [nn.Parameter(1, self.layer_size)] + \
+                  [nn.Parameter(self.layer_size, self.layer_size) for _ in range(2, self.num_layers)] + \
+                  [nn.Parameter(self.layer_size, 1)]
+        self.bs = [nn.Parameter(1, self.layer_size)] + \
+                  [nn.Parameter(self.layer_size, self.layer_size) for _ in range(2, self.num_layers)] + \
+                  [nn.Parameter(1, 1)]
 
     def run(self, x):
         """
@@ -78,6 +88,10 @@ class RegressionModel(object):
             A node with shape (batch_size x 1) containing predicted y-values
         """
         "*** YOUR CODE HERE ***"
+        for t in range(self.num_layers - 1):
+            x = nn.ReLU(nn.AddBias(nn.Linear(x, self.ms[t]), self.bs[t]))
+
+        return nn.AddBias(nn.Linear(x, self.ms[self.num_layers - 1]), self.bs[self.num_layers - 1])
 
     def get_loss(self, x, y):
         """
@@ -90,12 +104,30 @@ class RegressionModel(object):
         Returns: a loss node
         """
         "*** YOUR CODE HERE ***"
+        return nn.SquareLoss(self.run(x), y)
 
     def train(self, dataset):
         """
         Trains the model.
         """
         "*** YOUR CODE HERE ***"
+        avg_loss, total = 1, 0
+        while avg_loss > 0.02:
+            total_loss, total = 0, 0
+            for x, y in dataset.iterate_once(1):
+                total += 1
+                loss = self.get_loss(x, y)
+                total_loss += nn.as_scalar(loss)
+
+                grads = nn.gradients(loss, self.ms + self.bs)
+                mid = len(grads) // 2
+                for t, grad in enumerate(grads):
+                    if t < mid:
+                        self.ms[t].update(grad, -self.rate)
+                    else:
+                        self.bs[t - mid].update(grad, -self.rate)
+
+            avg_loss = total_loss / total
 
 
 class DigitClassificationModel(object):
