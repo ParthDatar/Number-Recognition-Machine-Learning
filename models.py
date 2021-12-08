@@ -44,6 +44,17 @@ class PerceptronModel(object):
         Train the perceptron until convergence.
         """
         "*** YOUR CODE HERE ***"
+        correct, total = -1, 0
+        while correct < total:
+            correct, total = 0, 0
+            for x, y in dataset.iterate_once(1):
+                total += 1
+
+                label = nn.as_scalar(y)
+                if self.get_prediction(x) == label:
+                    correct += 1
+                else:
+                    self.w.update(x, label)
 
 
 class RegressionModel(object):
