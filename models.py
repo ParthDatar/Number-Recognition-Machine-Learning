@@ -148,7 +148,7 @@ class DigitClassificationModel(object):
 	def __init__(self):
 		# Initialize your model parameters here
 		"*** YOUR CODE HERE ***"
-		self.rate = 0.03
+		self.rate = 0.05
 		self.num_layers = 4
 		self.layer_size = 100
 
@@ -201,12 +201,9 @@ class DigitClassificationModel(object):
 		"""
 		"*** YOUR CODE HERE ***"
 		avg_loss, total = 1, 0
-		while avg_loss > 0.02 and dataset.get_validation_accuracy() < 0.98:
-			total_loss, total = 0, 0
-			for x, y in dataset.iterate_once(1):
-				total += 1
+		while dataset.get_validation_accuracy() < 0.98:
+			for x, y in dataset.iterate_once(75):
 				loss = self.get_loss(x, y)
-				total_loss += nn.as_scalar(loss)
 
 				grads = nn.gradients(loss, self.ms + self.bs)
 				mid = len(grads) // 2
@@ -215,8 +212,6 @@ class DigitClassificationModel(object):
 						self.ms[t].update(grad, -self.rate)
 					else:
 						self.bs[t - mid].update(grad, -self.rate)
-
-			avg_loss = total_loss / total
 
 
 class LanguageIDModel(object):
@@ -238,6 +233,18 @@ class LanguageIDModel(object):
 
 		# Initialize your model parameters here
 		"*** YOUR CODE HERE ***"
+		self.learning_rate = 0.3
+		self.num_layers = 5
+		self.layer_size = 80
+		# self.numTrainingGames = 2000
+		# self.batch_size = 1
+
+		self.ms = [nn.Parameter(self.num_chars, self.layer_size)] + \
+				  [nn.Parameter(self.layer_size, self.layer_size) for _ in range(2, self.num_layers)] + \
+				  [nn.Parameter(self.layer_size, len(self.languages))]
+		self.bs = [nn.Parameter(1, self.layer_size)] + \
+				  [nn.Parameter(1, self.layer_size) for _ in range(2, self.num_layers)] + \
+				  [nn.Parameter(1, len(self.languages))]
 
 	def run(self, xs):
 		"""
@@ -269,6 +276,18 @@ class LanguageIDModel(object):
 				(also called logits)
 		"""
 		"*** YOUR CODE HERE ***"
+		acc = xs[0]
+		for t in range(self.num_layers - 1):
+			acc = nn.ReLU(nn.AddBias(nn.Linear(acc, self.ms[t]), self.bs[t]))
+		
+		for x in xs[1:]:
+			for t in range(self.num_layers - 1):
+				x = nn.ReLU(nn.AddBias(nn.Linear(x, self.ms[t]), self.bs[t]))
+			for t in range(1, self.num_layers - 1):
+				acc = nn.ReLU(nn.AddBias(nn.Linear(acc, self.ms[t]), self.bs[t]))
+			acc = nn.Add(x, acc)
+
+		return nn.AddBias(nn.Linear(acc, self.ms[self.num_layers - 1]), self.bs[self.num_layers - 1])
 
 	def get_loss(self, xs, y):
 		"""
@@ -285,9 +304,22 @@ class LanguageIDModel(object):
 		Returns: a loss node
 		"""
 		"*** YOUR CODE HERE ***"
+		return nn.SquareLoss(self.run(xs), y)
 
 	def train(self, dataset):
 		"""
 		Trains the model.
 		"""
 		"*** YOUR CODE HERE ***"
+		
+		while dataset.get_validation_accuracy() < 0.85:
+			for x, y in dataset.iterate_once(200):
+				loss = self.get_loss(x, y)
+
+				grads = nn.gradients(loss, self.ms + self.bs)
+				mid = len(grads) // 2
+				for t, grad in enumerate(grads):
+					if t < mid:
+						self.ms[t].update(grad, -self.learning_rate)
+					else:
+						self.bs[t - mid].update(grad, -self.learning_rate)
