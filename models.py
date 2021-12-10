@@ -148,7 +148,7 @@ class DigitClassificationModel(object):
     def __init__(self):
         # Initialize your model parameters here
         "*** YOUR CODE HERE ***"
-        self.rate = 0.05
+        self.rate = 0.075
         self.num_layers = 4
         self.layer_size = 100
 
@@ -200,8 +200,7 @@ class DigitClassificationModel(object):
         Trains the model.
         """
         "*** YOUR CODE HERE ***"
-        avg_loss, total = 1, 0
-        while dataset.get_validation_accuracy() < 0.98:
+        while dataset.get_validation_accuracy() < 0.975:
             for x, y in dataset.iterate_once(75):
                 loss = self.get_loss(x, y)
 
