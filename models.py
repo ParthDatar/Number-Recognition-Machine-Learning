@@ -200,7 +200,7 @@ class DigitClassificationModel(object):
 		Trains the model.
 		"""
 		"*** YOUR CODE HERE ***"
-		avg_loss, total = 1, 0
+		
 		while dataset.get_validation_accuracy() < 0.98:
 			for x, y in dataset.iterate_once(75):
 				loss = self.get_loss(x, y)
